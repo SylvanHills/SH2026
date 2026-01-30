@@ -1,0 +1,2465 @@
+<html lang="en"><head><!-- ╔════════════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║                                                                            ║ -->
+<!-- ║   鯨 KUJIRA - Premium Sushi Restaurant Template                            ║ -->
+<!-- ║   A scroll-driven animation showcase with agency-level design              ║ -->
+<!-- ║                                                                            ║ -->
+<!-- ║   TECHNIQUE: Scroll-Driven Image Sequence Animation                        ║ -->
+<!-- ║   This technique was pioneered by Apple on their product pages.            ║ -->
+<!-- ║   It creates a "video-like" experience controlled by scroll position.      ║ -->
+<!-- ║                                                                            ║ -->
+<!-- ║   HOW IT WORKS:                                                            ║ -->
+<!-- ║   1. Preload all 192 image frames into memory                              ║ -->
+<!-- ║   2. Map scroll position (0-100%) to frame index (0-191)                   ║ -->
+<!-- ║   3. Render the appropriate frame to a canvas element                      ║ -->
+<!-- ║   4. GSAP ScrollTrigger handles the scroll-to-progress mapping             ║ -->
+<!-- ║                                                                            ║ -->
+<!-- ╚════════════════════════════════════════════════════════════════════════════╝ -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鯨 KUJIRA | Premium Omakase Experience</title>
+<!-- ═══════════════════════════════════════════════════════════════════════════════
+FONTS: We use three complementary typefaces
+- Cormorant Garamond: Elegant serif for English headings
+- Noto Serif JP: Authentic Japanese characters
+- Inter: Clean sans-serif for body text
+═══════════════════════════════════════════════════════════════════════════════ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&amp;family=Inter:wght@300;400;500&amp;family=Noto+Serif+JP:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: CSS Custom Properties (Design Tokens)                        ║
+║                                                                        ║
+║  WHY: Custom properties allow us to define our design system in one    ║
+║  place. Changing a color here updates it everywhere.                   ║
+║                                                                        ║
+║  DESIGN PHILOSOPHY: Black & Gold creates luxury perception.            ║
+║  The warm gold (#c9a962) complements the deep blacks and adds          ║
+║  sophistication without being gaudy.                                   ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+:root {
+/* === Color Palette === */
+--color-black: #0a0a0a;           /* Deep black - primary background */
+--color-black-light: #141414;      /* Slightly lighter for cards/sections */
+--color-black-lighter: #1a1a1a;    /* For subtle elevation */
+--color-gold: #c9a962;             /* Primary gold accent */
+--color-gold-light: #e8d5a3;       /* Lighter gold for hover states */
+--color-gold-dark: #a08540;        /* Darker gold for shadows */
+--color-cream: #f5f0e6;            /* Warm cream for primary text */
+--color-cream-dark: #d4cfc5;       /* Muted cream for secondary text */
+--color-red: #8b2635;              /* Japanese red - used sparingly */
+/* === Typography === */
+--font-heading: 'Cormorant Garamond', Georgia, serif;
+--font-japanese: 'Noto Serif JP', serif;
+--font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+/* === Spacing Scale === */
+--space-xs: 0.5rem;    /* 8px */
+--space-sm: 1rem;      /* 16px */
+--space-md: 2rem;      /* 32px */
+--space-lg: 4rem;      /* 64px */
+--space-xl: 8rem;      /* 128px */
+--space-2xl: 12rem;    /* 192px */
+/* === Animation Timing === */
+--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+/* === Layout === */
+--max-width: 1400px;
+--header-height: 80px;
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: CSS Reset & Base Styles                                      ║
+║                                                                        ║
+║  WHY: Browsers have default styles that vary. A reset ensures          ║
+║  consistent rendering across all browsers.                             ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+*, *::before, *::after {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+html {
+/* Smooth scrolling for anchor links */
+scroll-behavior: smooth;
+/* Prevent horizontal scroll from animations */
+overflow-x: hidden;
+background-color: #0a0a0a;
+}
+body {
+font-family: var(--font-body);
+font-weight: 300;
+font-size: 16px;
+line-height: 1.6;
+color: var(--color-cream);
+background-color: var(--color-black);
+/* Hide custom cursor on mobile */
+cursor: default;
+overflow-x: hidden;
+}
+/* Custom selection color */
+::selection {
+background-color: var(--color-gold);
+color: var(--color-black);
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Loading Screen                                               ║
+║                                                                        ║
+║  WHY: We need to preload 192 images before the animation can play.     ║
+║  The loading screen shows progress and prevents a broken experience.   ║
+║                                                                        ║
+║  TECHNIQUE: CSS transforms and opacity for smooth animations.          ║
+║  We avoid animating properties that trigger layout (like width).       ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.loader {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: var(--color-black);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 9999;
+transition: opacity 0.8s var(--ease-out-expo),
+visibility 0.8s var(--ease-out-expo);
+}
+.loader.hidden {
+opacity: 0;
+visibility: hidden;
+pointer-events: none;
+}
+.loader__logo {
+font-family: var(--font-japanese);
+font-size: 4rem;
+font-weight: 300;
+color: var(--color-gold);
+margin-bottom: var(--space-md);
+letter-spacing: 0.3em;
+}
+.loader__text {
+font-family: var(--font-heading);
+font-size: 0.875rem;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-cream-dark);
+margin-bottom: var(--space-md);
+}
+.loader__progress {
+width: 200px;
+height: 1px;
+background-color: var(--color-black-lighter);
+position: relative;
+overflow: hidden;
+}
+.loader__progress-bar {
+position: absolute;
+top: 0;
+left: 0;
+height: 100%;
+width: 0%;
+background-color: var(--color-gold);
+transition: width 0.3s var(--ease-out-quart);
+}
+.loader__count {
+font-family: var(--font-body);
+font-size: 0.75rem;
+color: var(--color-gold);
+margin-top: var(--space-sm);
+letter-spacing: 0.1em;
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Navigation                                                   ║
+║                                                                        ║
+║  WHY: Fixed navigation allows easy access to sections. We hide it      ║
+║  on scroll down (to maximize content area) and show on scroll up.      ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.nav {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: var(--header-height);
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 0 var(--space-md);
+z-index: 1000;
+/* Solid background - no gradient */
+background: rgba(10, 10, 10, 0.95);
+/* Fade only - no sliding transform that creates shadow effect */
+opacity: 1;
+transition: opacity 0.25s ease;
+}
+.nav.hidden {
+opacity: 0;
+pointer-events: none;
+}
+.nav__logo {
+font-family: var(--font-japanese);
+font-size: 1.5rem;
+font-weight: 400;
+color: var(--color-gold);
+text-decoration: none;
+letter-spacing: 0.1em;
+display: flex;
+align-items: center;
+gap: var(--space-xs);
+}
+.nav__logo-en {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 300;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-cream);
+}
+.nav__links {
+display: flex;
+gap: var(--space-md);
+list-style: none;
+}
+.nav__link {
+font-family: var(--font-heading);
+font-size: 0.8rem;
+font-weight: 400;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(--color-cream);
+text-decoration: none;
+position: relative;
+padding: var(--space-xs) 0;
+transition: color 0.3s ease;
+}
+.nav__link::after {
+content: '';
+position: absolute;
+bottom: 0;
+left: 0;
+width: 0;
+height: 1px;
+background-color: var(--color-gold);
+transition: width 0.3s var(--ease-out-quart);
+}
+.nav__link:hover {
+color: var(--color-gold);
+}
+.nav__link:hover::after {
+width: 100%;
+}
+.nav__cta {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.2em;
+text-transform: uppercase;
+color: var(--color-black);
+background-color: var(--color-gold);
+padding: var(--space-xs) var(--space-sm);
+text-decoration: none;
+transition: all 0.3s var(--ease-out-quart);
+}
+.nav__cta:hover {
+background-color: var(--color-gold-light);
+transform: translateY(-2px);
+}
+/* Mobile navigation */
+.nav__menu-btn {
+display: none;
+flex-direction: column;
+gap: 6px;
+background: none;
+border: none;
+cursor: pointer;
+padding: var(--space-xs);
+}
+.nav__menu-btn span {
+display: block;
+width: 24px;
+height: 1px;
+background-color: var(--color-gold);
+transition: all 0.3s ease;
+}
+@media (max-width: 768px) {
+.nav__links, .nav__cta {
+display: none;
+}
+.nav__menu-btn {
+display: flex;
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Hero with Canvas Scroll Animation                            ║
+║                                                                        ║
+║  TECHNIQUE: Scroll-Driven Image Sequence                               ║
+║                                                                        ║
+║  The hero section contains a <canvas> element that displays frames     ║
+║  based on scroll position. Key concepts:                               ║
+║                                                                        ║
+║  1. PINNING: The section stays fixed while user scrolls through the    ║
+║     animation. GSAP ScrollTrigger handles this with pin: true.         ║
+║                                                                        ║
+║  2. SCRUBBING: Scroll position maps to animation progress.             ║
+║     scrub: 0.5 adds slight smoothing (0.5 second delay).               ║
+║                                                                        ║
+║  3. CANVAS RENDERING: We use canvas instead of swapping img src        ║
+║     because canvas is GPU-accelerated and smoother.                    ║
+║                                                                        ║
+║  4. HEIGHT CALCULATION: We make the container 400vh (4x viewport)      ║
+║     so users have enough scroll distance to see the full animation.    ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.hero {
+position: relative;
+width: 100%;
+height: 100vh;
+height: 100dvh; /* Dynamic viewport height for better mobile support */
+background: #0a0a0a;
+background-color: var(--color-black);
+/* This is the scrollable area - 400vh gives smooth animation playback */
+}
+.hero__canvas-container {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+overflow: hidden;
+background: #0a0a0a;
+background-color: var(--color-black);
+}
+.hero__canvas {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+min-width: 100%;
+min-height: 100%;
+object-fit: cover;
+/* Canvas will be sized via JavaScript to maintain aspect ratio */
+}
+/* Dark overlay for better text readability */
+.hero__overlay {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: linear-gradient(
+to bottom,
+rgba(10, 10, 10, 0.4) 0%,
+rgba(10, 10, 10, 0.1) 30%,
+rgba(10, 10, 10, 0.1) 50%,
+rgba(10, 10, 10, 0.6) 75%,
+rgba(10, 10, 10, 1) 100%
+);
+pointer-events: none;
+}
+/* Bottom alpha mask for seamless blend into next section */
+.hero__fade {
+position: absolute;
+bottom: 0;
+left: 0;
+width: 100%;
+height: 30%;
+background: linear-gradient(
+to bottom,
+transparent 0%,
+rgba(10, 10, 10, 0.5) 40%,
+rgba(10, 10, 10, 0.85) 70%,
+var(--color-black) 100%
+);
+pointer-events: none;
+z-index: 3;
+}
+/* Hero content overlay */
+.hero__content {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+text-align: center;
+pointer-events: none;
+z-index: 2;
+}
+.hero__japanese {
+font-family: var(--font-japanese);
+font-size: clamp(3rem, 10vw, 8rem);
+font-weight: 300;
+color: var(--color-gold);
+letter-spacing: 0.3em;
+margin-bottom: var(--space-xs);
+opacity: 0;
+transform: translateY(30px);
+}
+.hero__title {
+font-family: var(--font-heading);
+font-size: clamp(1rem, 3vw, 1.5rem);
+font-weight: 300;
+letter-spacing: 0.5em;
+text-transform: uppercase;
+color: var(--color-cream);
+margin-bottom: var(--space-md);
+opacity: 0;
+transform: translateY(30px);
+}
+.hero__tagline {
+font-family: var(--font-heading);
+font-size: clamp(0.875rem, 2vw, 1rem);
+font-weight: 300;
+font-style: italic;
+letter-spacing: 0.2em;
+color: var(--color-cream-dark);
+opacity: 0;
+transform: translateY(30px);
+}
+/* Scroll indicator */
+.hero__scroll {
+position: absolute;
+bottom: var(--space-lg);
+left: 50%;
+transform: translateX(-50%);
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: var(--space-sm);
+opacity: 0;
+z-index: 2;
+}
+.hero__scroll-text {
+font-family: var(--font-heading);
+font-size: 0.7rem;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-cream-dark);
+}
+.hero__scroll-line {
+width: 1px;
+height: 60px;
+background: linear-gradient(
+to bottom,
+var(--color-gold) 0%,
+transparent 100%
+);
+animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+0%, 100% {
+opacity: 0.3;
+transform: scaleY(0.5);
+transform-origin: top;
+}
+50% {
+opacity: 1;
+transform: scaleY(1);
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Philosophy / About                                           ║
+║                                                                        ║
+║  DESIGN: Asymmetric split layout with Japanese calligraphy on left     ║
+║  and English text on right. Creates visual interest and cultural       ║
+║  authenticity.                                                         ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.philosophy {
+position: relative;
+min-height: 100vh;
+display: flex;
+align-items: center;
+padding: var(--space-xl) var(--space-md);
+background: transparent; /* Background via ::before for kanji visibility */
+overflow: hidden;
+}
+/* Section background as pseudo-element - allows kanji to render above it */
+.philosophy::before {
+content: '';
+position: absolute;
+inset: 0;
+background-color: var(--color-black);
+z-index: 0;
+}
+.philosophy__container {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: var(--max-width);
+margin: 0 auto;
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: var(--space-xl);
+align-items: center;
+}
+.philosophy__left {
+position: relative;
+}
+.philosophy__kanji {
+font-family: var(--font-japanese);
+font-size: clamp(8rem, 20vw, 16rem);
+font-weight: 300;
+color: var(--color-gold);
+opacity: 0.15;
+line-height: 1;
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+writing-mode: vertical-rl;
+}
+.philosophy__image-frame {
+position: relative;
+aspect-ratio: 3/4;
+overflow: hidden;
+}
+.philosophy__image-frame::before {
+content: '';
+position: absolute;
+top: -20px;
+right: -20px;
+width: 100%;
+height: 100%;
+border: 1px solid var(--color-gold);
+z-index: 1;
+}
+.philosophy__image {
+width: 100%;
+height: 100%;
+object-fit: cover;
+/* Display original colors - no grayscale filter */
+}
+.philosophy__right {
+padding-left: var(--space-lg);
+}
+.philosophy__label {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-sm);
+display: flex;
+align-items: center;
+gap: var(--space-sm);
+}
+.philosophy__label::before {
+content: '';
+width: 40px;
+height: 1px;
+background-color: var(--color-gold);
+}
+.philosophy__heading {
+font-family: var(--font-heading);
+font-size: clamp(2.5rem, 5vw, 4rem);
+font-weight: 300;
+line-height: 1.1;
+letter-spacing: -0.02em;
+color: var(--color-cream);
+margin-bottom: var(--space-md);
+}
+.philosophy__heading em {
+font-style: italic;
+color: var(--color-gold);
+}
+.philosophy__text {
+font-family: var(--font-body);
+font-size: 1rem;
+font-weight: 300;
+line-height: 1.8;
+color: var(--color-cream-dark);
+margin-bottom: var(--space-md);
+max-width: 480px;
+}
+.philosophy__signature {
+font-family: var(--font-japanese);
+font-size: 1.25rem;
+color: var(--color-gold);
+letter-spacing: 0.2em;
+}
+@media (max-width: 968px) {
+.philosophy__container {
+grid-template-columns: 1fr;
+gap: var(--space-lg);
+}
+.philosophy__right {
+padding-left: 0;
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Menu Highlights                                              ║
+║                                                                        ║
+║  DESIGN: Horizontal scroll gallery showcasing signature dishes.        ║
+║  Each card has a reveal animation and gold overlay on hover.           ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.menu {
+position: relative;
+padding: var(--space-xl) 0;
+/* Direct background color - more reliable than ::before for layout */
+background-color: var(--color-black-light);
+/* overflow: visible allows proper scroll behavior */
+}
+.menu__header {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: var(--max-width);
+margin: 0 auto;
+padding: 0 var(--space-md);
+margin-bottom: var(--space-lg);
+display: flex;
+justify-content: space-between;
+align-items: flex-end;
+}
+.menu__title-group {
+max-width: 600px;
+}
+.menu__label {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-sm);
+display: flex;
+align-items: center;
+gap: var(--space-sm);
+}
+.menu__label::before {
+content: '';
+width: 40px;
+height: 1px;
+background-color: var(--color-gold);
+}
+.menu__title {
+font-family: var(--font-heading);
+font-size: clamp(2rem, 4vw, 3.5rem);
+font-weight: 300;
+line-height: 1.1;
+letter-spacing: -0.02em;
+color: var(--color-cream);
+}
+.menu__view-all {
+font-family: var(--font-heading);
+font-size: 0.8rem;
+font-weight: 400;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(--color-cream);
+text-decoration: none;
+display: flex;
+align-items: center;
+gap: var(--space-xs);
+transition: color 0.3s ease;
+}
+.menu__view-all:hover {
+color: var(--color-gold);
+}
+.menu__view-all svg {
+width: 20px;
+height: 20px;
+transition: transform 0.3s ease;
+}
+.menu__view-all:hover svg {
+transform: translateX(5px);
+}
+/* ═══════════════════════════════════════════════════════════════════════
+PINNED HORIZONTAL SCROLL CONTAINER
+TECHNIQUE: Vertical scroll is converted to horizontal movement.
+The section pins in place while user scrolls, and menu items
+move horizontally from right to left. This creates an immersive
+gallery experience without the scroll-blocking issues of native
+horizontal overflow.
+HOW IT WORKS:
+1. .menu pins when it enters viewport (via GSAP ScrollTrigger)
+2. Vertical scroll progress (0-1) maps to horizontal translateX
+3. Items move from right to left as user scrolls down
+4. Section unpins after all items are visible
+═══════════════════════════════════════════════════════════════════════ */
+.menu__scroll {
+position: relative;
+z-index: 20;  /* Above background kanji */
+display: flex;
+gap: var(--space-md);
+/* Align with centered header: (viewport - max-width)/2 + padding */
+padding-left: max(var(--space-md), calc((100vw - var(--max-width)) / 2 + var(--space-md)));
+padding-right: var(--space-md);
+/* GSAP controls horizontal movement - no native scroll */
+overflow: visible;
+will-change: transform;
+}
+.menu__item {
+flex: 0 0 auto;
+width: 350px;
+scroll-snap-align: start;
+position: relative;
+overflow: visible; /* Allow the fade effect to show */
+cursor: pointer;
+}
+/* Soft bottom edge fade - removes sharp rectangle edges
+Creates a smooth blend into the section background */
+.menu__item::after {
+content: '';
+position: absolute;
+bottom: -1px;
+left: 0;
+width: 100%;
+height: 80px;
+background: linear-gradient(
+to bottom,
+transparent 0%,
+rgba(20, 20, 20, 0.4) 30%,
+rgba(20, 20, 20, 0.8) 60%,
+var(--color-black-light) 100%
+);
+pointer-events: none;
+z-index: 5;
+}
+.menu__item-image {
+position: relative;
+aspect-ratio: 4/5;
+overflow: hidden;
+background-color: var(--color-black-lighter);
+border-radius: 2px; /* Subtle rounding */
+}
+.menu__item-image img {
+width: 100%;
+height: 100%;
+object-fit: cover;
+transition: transform 0.6s var(--ease-out-quart);
+/* Ensure image stays below overlay when transformed */
+position: relative;
+z-index: 1;
+}
+.menu__item:hover .menu__item-image img {
+transform: scale(1.05);
+}
+/* ═══════════════════════════════════════════════════════════════════════
+MENU ITEM ALPHA MASK
+Strong bottom-to-top gradient creates a "fade to black" effect
+that makes the white/gold text pop against any image background.
+The gradient covers 60% of the image for maximum text readability.
+z-index: 3 ensures it stays above the image (z-index: 1) even
+when the image is transformed/scaled on hover.
+═══════════════════════════════════════════════════════════════════════ */
+.menu__item-overlay {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: linear-gradient(
+to top,
+rgba(10, 10, 10, 0.95) 0%,
+rgba(10, 10, 10, 0.8) 20%,
+rgba(10, 10, 10, 0.5) 40%,
+rgba(10, 10, 10, 0.15) 60%,
+transparent 75%
+);
+z-index: 3;  /* Above image (z-index: 1) */
+pointer-events: none;  /* Allow hover to pass through to image */
+}
+.menu__item-content {
+position: absolute;
+bottom: 0;
+left: 0;
+width: 100%;
+padding: var(--space-md);
+padding-bottom: calc(var(--space-md) + 40px); /* Extra padding above the fade */
+z-index: 10; /* Above the bottom fade and image */
+pointer-events: none; /* Allow hover events to reach the image */
+}
+.menu__item-japanese {
+font-family: var(--font-japanese);
+font-size: 0.875rem;
+color: var(--color-gold);
+letter-spacing: 0.2em;
+margin-bottom: var(--space-xs);
+}
+.menu__item-name {
+font-family: var(--font-heading);
+font-size: 1.5rem;
+font-weight: 400;
+color: var(--color-cream);
+margin-bottom: var(--space-xs);
+}
+.menu__item-desc {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+line-height: 1.6;
+}
+.menu__item-price {
+position: absolute;
+top: var(--space-sm);
+right: var(--space-sm);
+font-family: var(--font-heading);
+font-size: 0.875rem;
+font-weight: 400;
+color: var(--color-gold);
+background-color: rgba(10, 10, 10, 0.8);
+padding: var(--space-xs) var(--space-sm);
+letter-spacing: 0.1em;
+z-index: 3;
+}
+@media (max-width: 768px) {
+.menu__scroll {
+/* Native horizontal scroll on mobile */
+overflow-x: auto;
+overflow-y: hidden;
+scroll-snap-type: x proximity;
+-webkit-overflow-scrolling: touch;
+}
+.menu__item {
+width: 280px;
+}
+.menu__header {
+flex-direction: column;
+align-items: flex-start;
+gap: var(--space-sm);
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Experience / Features                                        ║
+║                                                                        ║
+║  DESIGN: Three column grid showcasing unique aspects of the            ║
+║  restaurant. Minimalist icons with descriptive text.                   ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.experience {
+position: relative;
+padding: var(--space-xl) var(--space-md);
+background: transparent; /* Background via ::before for kanji visibility */
+}
+/* Section background as pseudo-element */
+.experience::before {
+content: '';
+position: absolute;
+inset: 0;
+background-color: var(--color-black);
+z-index: 0;
+}
+.experience__container {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: var(--max-width);
+margin: 0 auto;
+}
+.experience__header {
+text-align: center;
+margin-bottom: var(--space-xl);
+}
+.experience__label {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-sm);
+}
+.experience__title {
+font-family: var(--font-heading);
+font-size: clamp(2rem, 4vw, 3rem);
+font-weight: 300;
+color: var(--color-cream);
+letter-spacing: -0.02em;
+}
+.experience__grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: var(--space-lg);
+}
+.experience__item {
+text-align: center;
+padding: var(--space-lg);
+border: 1px solid transparent;
+transition: border-color 0.3s ease;
+/* Required for hover effect */
+position: relative;
+overflow: hidden;
+background-color: var(--color-black);
+}
+/* ═══════════════════════════════════════════════════════════════════════
+EXPERIENCE CARD HOVER EFFECT: Seigaiha Wave Pattern with Spotlight
+TECHNIQUE: Two pseudo-elements layered:
+1. ::before - Contains the Seigaiha pattern (traditional Japanese waves)
+2. ::after - Radial gradient mask that follows cursor position
+The pattern is always there but masked. On hover, the spotlight
+reveals the pattern where the cursor moves.
+TO SWAP EFFECTS: Change the background-image in ::before
+See alternative patterns commented below.
+═══════════════════════════════════════════════════════════════════════ */
+/* Pattern layer - Seigaiha (traditional wave pattern) */
+.experience__item::before {
+content: '';
+position: absolute;
+inset: 0;
+/* Seigaiha wave pattern in gold */
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='40'%3E%3Cpath d='M0 20 Q20 0 40 20 Q60 40 80 20' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M-40 20 Q-20 0 0 20 Q20 40 40 20' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M40 20 Q60 0 80 20 Q100 40 120 20' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M0 40 Q20 20 40 40 Q60 60 80 40' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M-40 40 Q-20 20 0 40 Q20 60 40 40' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M40 40 Q60 20 80 40 Q100 60 120 40' fill='none' stroke='%23c9a962' stroke-width='0.5' opacity='0.6'/%3E%3C/svg%3E");
+background-size: 80px 40px;
+opacity: 0;
+/* Fast fade-out so pattern disappears before mask */
+transition: opacity 0.1s ease;
+pointer-events: none;
+z-index: 1;
+/* ═══════════════════════════════════════════════════════════════════
+ALTERNATIVE PATTERNS (uncomment to swap):
+OPTION 2: Asanoha (Hemp Leaf) geometric pattern
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 0L24 12L12 24L0 12Z M12 6L18 12L12 18L6 12Z' fill='none' stroke='%23c9a962' stroke-width='0.3' opacity='0.5'/%3E%3C/svg%3E");
+background-size: 24px 24px;
+OPTION 3: Gold Foil Texture
+background: linear-gradient(135deg, rgba(201,169,98,0.15) 0%, rgba(201,169,98,0.05) 50%, rgba(201,169,98,0.2) 100%);
+OPTION 4: Dot Grid
+background-image: radial-gradient(circle, rgba(201,169,98,0.4) 1px, transparent 1px);
+background-size: 16px 16px;
+OPTION 5: Diagonal Lines
+background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(201,169,98,0.1) 10px, rgba(201,169,98,0.1) 11px);
+═══════════════════════════════════════════════════════════════════ */
+}
+/* Spotlight mask - follows cursor via CSS custom properties set by JS */
+.experience__item::after {
+content: '';
+position: absolute;
+inset: 0;
+background: radial-gradient(
+circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+transparent 0%,
+rgba(10, 10, 10, 0.97) 100%
+);
+opacity: 0;
+transition: opacity 0.3s ease;
+pointer-events: none;
+z-index: 2;
+}
+/* Show pattern and spotlight on hover
+ASYMMETRIC TRANSITIONS:
+- Enter: mask appears fast (0.1s), pattern appears with delay (waits for mask)
+- Leave: pattern disappears fast (0.1s), mask lingers (0.3s)
+*/
+.experience__item:hover::before {
+opacity: 1;
+/* Slow fade-in with delay so mask is in place first */
+transition: opacity 0.3s ease 0.1s;
+}
+.experience__item:hover::after {
+opacity: 1;
+/* Fast fade-in so mask appears before pattern */
+transition: opacity 0.1s ease;
+}
+.experience__item:hover {
+border-color: var(--color-gold);
+}
+/* Ensure content stays above the effect layers */
+.experience__icon {
+font-family: var(--font-japanese);
+font-size: 3rem;
+color: var(--color-gold);
+margin-bottom: var(--space-md);
+display: block;
+position: relative;
+z-index: 3;
+}
+.experience__item-title {
+font-family: var(--font-heading);
+font-size: 1.25rem;
+font-weight: 400;
+color: var(--color-cream);
+margin-bottom: var(--space-sm);
+letter-spacing: 0.05em;
+position: relative;
+z-index: 3;
+}
+.experience__item-text {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+line-height: 1.7;
+position: relative;
+z-index: 3;
+}
+@media (max-width: 768px) {
+.experience__grid {
+grid-template-columns: 1fr;
+gap: var(--space-md);
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Chef / Story                                                 ║
+║                                                                        ║
+║  DESIGN: Full-width image with parallax effect and floating quote      ║
+║  card. Creates an emotional connection with the craftsman.             ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.chef {
+position: relative;
+min-height: 100vh;
+display: flex;
+align-items: center;
+overflow: hidden;
+}
+.chef__background {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 120%;
+background: linear-gradient(135deg,
+var(--color-black-light) 0%,
+var(--color-black) 100%);
+z-index: 0;  /* Below kanji (z-index: 5) */
+}
+.chef__image {
+position: absolute;
+top: -10%;
+left: 0;
+width: 60%;
+height: 120%;
+object-fit: cover;
+opacity: 0.7;
+filter: grayscale(40%);
+z-index: 1;  /* Above background, below kanji */
+}
+.chef__overlay {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: linear-gradient(
+to right,
+rgba(10, 10, 10, 0) 0%,
+rgba(10, 10, 10, 0.8) 40%,
+rgba(10, 10, 10, 1) 70%
+);
+z-index: 2;  /* Above image, below kanji */
+}
+.chef__content {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: var(--max-width);
+margin: 0 auto;
+padding: var(--space-xl) var(--space-md);
+display: flex;
+justify-content: flex-end;
+}
+.chef__card {
+max-width: 500px;
+padding: var(--space-lg);
+background-color: rgba(10, 10, 10, 0.6);
+backdrop-filter: blur(10px);
+border: 1px solid rgba(201, 169, 98, 0.2);
+}
+.chef__label {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-md);
+}
+.chef__quote {
+font-family: var(--font-heading);
+font-size: clamp(1.5rem, 3vw, 2rem);
+font-weight: 300;
+font-style: italic;
+line-height: 1.5;
+color: var(--color-cream);
+margin-bottom: var(--space-md);
+}
+.chef__quote::before {
+content: '"';
+font-size: 4rem;
+line-height: 0;
+vertical-align: -0.4em;
+color: var(--color-gold);
+margin-right: var(--space-xs);
+}
+.chef__name {
+font-family: var(--font-heading);
+font-size: 1rem;
+font-weight: 400;
+color: var(--color-cream);
+margin-bottom: var(--space-xs);
+}
+.chef__title {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+}
+.chef__kanji {
+font-family: var(--font-japanese);
+font-size: 8rem;
+font-weight: 300;
+color: var(--color-gold);
+opacity: 0.1;
+position: absolute;
+bottom: var(--space-md);
+right: var(--space-md);
+line-height: 1;
+}
+@media (max-width: 768px) {
+.chef {
+min-height: auto;
+padding: var(--space-lg) 0;
+}
+.chef__content {
+justify-content: center;
+padding: var(--space-md);
+}
+.chef__card {
+max-width: 100%;
+padding: var(--space-md);
+}
+.chef__kanji {
+font-size: 5rem;
+right: var(--space-sm);
+bottom: var(--space-sm);
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Reservation CTA                                              ║
+║                                                                        ║
+║  DESIGN: Clean, minimal form design with gold accents.                 ║
+║  Focus on the call to action with elegant input styling.               ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.reservation {
+position: relative;
+padding: var(--space-2xl) var(--space-md);
+background: transparent; /* Background via ::before for kanji visibility */
+text-align: center;
+}
+/* Section background as pseudo-element */
+.reservation::before {
+content: '';
+position: absolute;
+inset: 0;
+background-color: var(--color-black-light);
+z-index: 0;
+}
+.reservation__container {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: 600px;
+margin: 0 auto;
+}
+.reservation__kanji {
+font-family: var(--font-japanese);
+font-size: 6rem;
+font-weight: 300;
+color: var(--color-gold);
+opacity: 0.15;
+margin-bottom: var(--space-sm);
+}
+.reservation__label {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-sm);
+}
+.reservation__title {
+font-family: var(--font-heading);
+font-size: clamp(2rem, 4vw, 3rem);
+font-weight: 300;
+color: var(--color-cream);
+margin-bottom: var(--space-sm);
+letter-spacing: -0.02em;
+}
+.reservation__subtitle {
+font-family: var(--font-body);
+font-size: 1rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+margin-bottom: var(--space-lg);
+line-height: 1.7;
+}
+.reservation__form {
+display: flex;
+flex-direction: column;
+gap: var(--space-sm);
+}
+.reservation__row {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: var(--space-sm);
+}
+.reservation__input {
+width: 100%;
+padding: var(--space-sm);
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream);
+background-color: transparent;
+border: 1px solid rgba(201, 169, 98, 0.3);
+outline: none;
+transition: border-color 0.3s ease;
+}
+.reservation__input::placeholder {
+color: var(--color-cream-dark);
+}
+.reservation__input:focus {
+border-color: var(--color-gold);
+}
+.reservation__button {
+margin-top: var(--space-sm);
+padding: var(--space-sm) var(--space-lg);
+font-family: var(--font-heading);
+font-size: 0.875rem;
+font-weight: 400;
+letter-spacing: 0.2em;
+text-transform: uppercase;
+color: var(--color-black);
+background-color: var(--color-gold);
+border: none;
+cursor: pointer;
+transition: all 0.3s var(--ease-out-quart);
+position: relative;
+overflow: hidden;
+}
+.reservation__button:hover {
+background-color: var(--color-gold-light);
+transform: translateY(-2px);
+}
+.reservation__button::after {
+content: '';
+position: absolute;
+top: 50%;
+left: 50%;
+width: 0;
+height: 0;
+background-color: rgba(255, 255, 255, 0.2);
+border-radius: 50%;
+transform: translate(-50%, -50%);
+transition: width 0.6s ease, height 0.6s ease;
+}
+.reservation__button:active::after {
+width: 300px;
+height: 300px;
+}
+@media (max-width: 576px) {
+.reservation__row {
+grid-template-columns: 1fr;
+}
+.reservation__kanji {
+font-size: 4rem;
+}
+.reservation__container {
+padding: 0 var(--space-sm);
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Footer                                                       ║
+║                                                                        ║
+║  DESIGN: Minimal footer with contact info and social links.            ║
+║  Japanese characters as decorative background element.                 ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.footer {
+position: relative;
+padding: var(--space-lg) var(--space-md) var(--space-md);
+background-color: var(--color-black); /* Solid background to cover kanji */
+border-top: 1px solid rgba(201, 169, 98, 0.2);
+overflow: hidden;
+z-index: 10; /* Above background kanji */
+}
+/* Section background as pseudo-element */
+.footer::before {
+content: '';
+position: absolute;
+inset: 0;
+background-color: var(--color-black);
+z-index: 0;
+}
+.footer__kanji {
+font-family: var(--font-japanese);
+font-size: 12rem;
+font-weight: 300;
+color: var(--color-gold);
+opacity: 0.03;
+position: absolute;
+top: 0;
+right: 2%;
+line-height: 1;
+pointer-events: none;
+}
+.footer__container {
+position: relative;
+z-index: 20;  /* Above background kanji */
+max-width: var(--max-width);
+margin: 0 auto;
+display: grid;
+grid-template-columns: 2fr 1fr 1fr 1fr;
+gap: var(--space-lg);
+}
+.footer__brand {
+max-width: 300px;
+}
+.footer__logo {
+font-family: var(--font-japanese);
+font-size: 2rem;
+color: var(--color-gold);
+margin-bottom: var(--space-xs);
+}
+.footer__logo-en {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 300;
+letter-spacing: 0.3em;
+text-transform: uppercase;
+color: var(--color-cream);
+margin-bottom: var(--space-md);
+}
+.footer__tagline {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+line-height: 1.7;
+}
+.footer__col-title {
+font-family: var(--font-heading);
+font-size: 0.75rem;
+font-weight: 400;
+letter-spacing: 0.2em;
+text-transform: uppercase;
+color: var(--color-gold);
+margin-bottom: var(--space-md);
+}
+.footer__links {
+list-style: none;
+}
+.footer__link {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+text-decoration: none;
+display: block;
+margin-bottom: var(--space-xs);
+transition: color 0.3s ease;
+}
+.footer__link:hover {
+color: var(--color-gold);
+}
+.footer__contact-item {
+font-family: var(--font-body);
+font-size: 0.875rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+margin-bottom: var(--space-xs);
+line-height: 1.6;
+}
+.footer__social {
+display: flex;
+gap: var(--space-sm);
+margin-top: var(--space-md);
+}
+.footer__social-link {
+width: 40px;
+height: 40px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 1px solid rgba(201, 169, 98, 0.3);
+color: var(--color-cream);
+text-decoration: none;
+transition: all 0.3s ease;
+}
+.footer__social-link:hover {
+border-color: var(--color-gold);
+color: var(--color-gold);
+}
+.footer__bottom {
+position: relative;
+z-index: 2;
+max-width: var(--max-width);
+margin: var(--space-lg) auto 0;
+padding-top: var(--space-md);
+border-top: 1px solid rgba(201, 169, 98, 0.1);
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+.footer__copyright {
+font-family: var(--font-body);
+font-size: 0.75rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+}
+.footer__legal {
+display: flex;
+gap: var(--space-md);
+}
+.footer__legal-link {
+font-family: var(--font-body);
+font-size: 0.75rem;
+font-weight: 300;
+color: var(--color-cream-dark);
+text-decoration: none;
+transition: color 0.3s ease;
+}
+.footer__legal-link:hover {
+color: var(--color-gold);
+}
+@media (max-width: 968px) {
+.footer__container {
+grid-template-columns: 1fr 1fr;
+}
+.footer__brand {
+grid-column: span 2;
+}
+.footer__kanji {
+font-size: 8rem;
+}
+}
+@media (max-width: 576px) {
+.footer__container {
+grid-template-columns: 1fr;
+}
+.footer__brand {
+grid-column: span 1;
+}
+.footer__bottom {
+flex-direction: column;
+gap: var(--space-sm);
+text-align: center;
+}
+.footer__kanji {
+font-size: 5rem;
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Animation Utilities                                          ║
+║                                                                        ║
+║  WHY: These classes are applied by GSAP ScrollTrigger to animate       ║
+║  elements as they enter the viewport. Starting state is defined here.  ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.reveal {
+opacity: 0;
+transform: translateY(40px);
+}
+.reveal-left {
+opacity: 0;
+transform: translateX(-40px);
+}
+.reveal-right {
+opacity: 0;
+transform: translateX(40px);
+}
+.reveal-scale {
+opacity: 0;
+transform: scale(0.95);
+}
+/* Line reveal animation for text */
+.line-reveal {
+overflow: hidden;
+}
+.line-reveal span {
+display: inline-block;
+transform: translateY(100%);
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Background Kanji (Scrolling Text)                            ║
+║                                                                        ║
+║  WHY: Subtle Japanese characters in the background add cultural        ║
+║  authenticity. Unlike a fixed overlay, this scrolls WITH the page      ║
+║  like text in a book - revealing naturally as you read down.           ║
+║                                                                        ║
+║  TECHNIQUE: Absolute positioning within a wrapper that contains all    ║
+║  content sections. The text is placed once and scrolls naturally.      ║
+║  Now with clip-path animation for scroll-reveal effect.                ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.main-content {
+position: relative;
+z-index: 1;  /* Creates stacking context for all children */
+}
+/* Background kanji - positioned ABOVE section ::before backgrounds
+but BELOW section content. Creates a watermark effect.
+STACKING ORDER (within .main-content):
+- Section ::before backgrounds: z-index: 0
+- Background kanji: z-index: 5
+- Section content containers: z-index: 20
+POSITIONING: width: fit-content shrinks the box to text width,
+then right: 20px positions it from the viewport right edge */
+.background-kanji {
+position: absolute;
+top: 0;
+right: 20px;
+width: fit-content;
+height: 0;  /* Start with 0 height, animated by JS */
+overflow: hidden;
+pointer-events: none;
+z-index: 5;  /* Between section backgrounds (0) and content (20) */
+}
+.background-kanji__text {
+font-family: var(--font-japanese);
+font-size: 4rem;
+font-weight: 300;
+color: var(--color-gold);
+opacity: 0.12;
+writing-mode: vertical-rl;
+text-orientation: mixed;
+letter-spacing: 0.05em;
+line-height: 1.2;
+white-space: nowrap;
+display: block;
+}
+/* Adjust on medium screens */
+@media (max-width: 1200px) {
+.background-kanji {
+right: 15px;
+}
+.background-kanji__text {
+font-size: 3rem;
+}
+}
+/* Hide on smaller screens for cleaner experience */
+@media (max-width: 768px) {
+.background-kanji {
+display: none;
+}
+}
+/* ╔════════════════════════════════════════════════════════════════════════╗
+║  SECTION: Grain Overlay                                                ║
+║                                                                        ║
+║  WHY: Subtle film grain adds texture and a premium analog feel.        ║
+║  The noise is generated via CSS and animated for a dynamic effect.     ║
+╚════════════════════════════════════════════════════════════════════════╝ */
+.grain {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+opacity: 0.03;
+pointer-events: none;
+z-index: 9997;
+/* Static grain - no animation to prevent shadow artifacts */
+}
+</style>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body>
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  COMPONENT: Loading Screen                                             ║
+         ║                                                                        ║
+         ║  PURPOSE: Shows while 192 animation frames are preloading.             ║
+         ║  The progress bar updates as each image loads.                         ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <div class="loader" id="loader">
+        <div class="loader__logo">鯨</div>
+        <div class="loader__text">Loading Experience</div>
+        <div class="loader__progress">
+            <div class="loader__progress-bar" id="loaderProgress"></div>
+        </div>
+        <div class="loader__count" id="loaderCount">0%</div>
+    </div>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  COMPONENT: Film Grain Overlay                                         ║
+         ║                                                                        ║
+         ║  PURPOSE: Subtle animated noise that adds texture and warmth.          ║
+         ║  Creates an analog, cinematic quality to the digital experience.       ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <div class="grain"></div>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  COMPONENT: Navigation                                                 ║
+         ║                                                                        ║
+         ║  BEHAVIOR: Fixed position, hides on scroll down, shows on scroll up.  ║
+         ║  This maximizes content area while keeping navigation accessible.     ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <nav class="nav" id="nav">
+        <a href="#" class="nav__logo">
+            鯨 <span class="nav__logo-en">Kujira</span>
+        </a>
+        <ul class="nav__links">
+            <li><a href="#philosophy" class="nav__link">Philosophy</a></li>
+            <li><a href="#menu" class="nav__link">Menu</a></li>
+            <li><a href="#experience" class="nav__link">Experience</a></li>
+            <li><a href="#chef" class="nav__link">Our Chef</a></li>
+        </ul>
+        <a href="#reservation" class="nav__cta">Reserve</a>
+        <button class="nav__menu-btn" aria-label="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Hero with Scroll-Driven Animation                            ║
+         ║                                                                        ║
+         ║  THE MAIN TECHNIQUE:                                                   ║
+         ║  This section demonstrates scroll-driven image sequence animation.     ║
+         ║                                                                        ║
+         ║  HOW IT WORKS:                                                         ║
+         ║  1. A <canvas> element fills the viewport                              ║
+         ║  2. 192 frames are preloaded into an array                             ║
+         ║  3. GSAP ScrollTrigger tracks scroll progress (0 to 1)                 ║
+         ║  4. Progress is mapped to frame index (0 to 191)                       ║
+         ║  5. The corresponding frame is drawn to the canvas                     ║
+         ║                                                                        ║
+         ║  PINNING:                                                              ║
+         ║  The section is "pinned" during the animation, meaning it stays        ║
+         ║  fixed while the user scrolls. Once the animation completes,           ║
+         ║  it unpins and the page scrolls normally.                              ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <section class="hero" id="hero">
+        <div class="hero__canvas-container">
+            <canvas class="hero__canvas" id="heroCanvas"></canvas>
+            <div class="hero__overlay"></div>
+            <!-- Alpha mask fade at bottom - blends hero into next section -->
+            <div class="hero__fade"></div>
+            <div class="hero__content">
+                <h1 class="hero__japanese" id="heroJapanese">鯨</h1>
+                <p class="hero__title" id="heroTitle">Kujira</p>
+                <p class="hero__tagline" id="heroTagline">Artistry in Every Slice</p>
+            </div>
+            <div class="hero__scroll" id="heroScroll">
+                <span class="hero__scroll-text">Scroll to Explore</span>
+                <span class="hero__scroll-line"></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  MAIN CONTENT WRAPPER                                                  ║
+         ║                                                                        ║
+         ║  This wrapper contains all content sections after the hero.            ║
+         ║  The background kanji is positioned absolutely within this wrapper,    ║
+         ║  so it scrolls naturally with the page content.                        ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <div class="main-content">
+        <!-- Background Kanji - scrolls with content like text in a book -->
+        <div class="background-kanji" aria-hidden="true">
+            <div class="background-kanji__text">寿司の芸術鮮度匠心技美味極上職人魂伝統革新四季折々海の恵み一期一会真心込めて繊細な技巧</div>
+        </div>
+
+        <!-- ╔════════════════════════════════════════════════════════════════════════╗
+             ║  SECTION: Philosophy                                                   ║
+             ║                                                                        ║
+             ║  DESIGN: Split layout with decorative Japanese calligraphy             ║
+             ║  and elegant English copy. Establishes brand story and values.         ║
+             ╚════════════════════════════════════════════════════════════════════════╝ -->
+        <section class="philosophy" id="philosophy">
+        <div class="philosophy__container">
+            <div class="philosophy__left reveal-left">
+                <span class="philosophy__kanji">匠</span>
+                <div class="philosophy__image-frame">
+                    <!-- IMAGE: chef-hands.jpg - see AI prompts below for generation -->
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/chef-hands.jpeg" alt="Master chef preparing sushi" class="philosophy__image">
+                </div>
+            </div>
+            <div class="philosophy__right">
+                <span class="philosophy__label reveal">Our Philosophy</span>
+                <h2 class="philosophy__heading reveal">
+                    Where Tradition<br>
+                    Meets <em>Mastery</em>
+                </h2>
+                <p class="philosophy__text reveal">
+                    At Kujira, we believe sushi is more than food—it's an art form passed down through generations. Each piece tells a story of the sea, the seasons, and the skilled hands that craft it.
+                </p>
+                <p class="philosophy__text reveal">
+                    Our commitment to sourcing the finest ingredients from Tokyo's Tsukiji Market ensures every bite transports you to the heart of Japan.
+                </p>
+                <span class="philosophy__signature reveal">— 山田 健太郎</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Menu                                                         ║
+         ║                                                                        ║
+         ║  DESIGN: Horizontal scroll gallery of signature dishes.                ║
+         ║  Cards feature Japanese names, descriptions, and prices.               ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <section class="menu" id="menu">
+        <div class="menu__header">
+            <div class="menu__title-group">
+                <span class="menu__label reveal">Signature Selection</span>
+                <h2 class="menu__title reveal">Omakase Highlights</h2>
+            </div>
+            <a href="#" class="menu__view-all reveal">
+                View Full Menu
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M5 12h14M12 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </div>
+        <div class="menu__scroll">
+            <article class="menu__item reveal-scale">
+                <div class="menu__item-image">
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/otoro.jpeg" alt="Otoro - Premium fatty tuna">
+                    <div class="menu__item-overlay"></div>
+                    <span class="menu__item-price">$48</span>
+                </div>
+                <div class="menu__item-content">
+                    <span class="menu__item-japanese">大トロ</span>
+                    <h3 class="menu__item-name">Otoro</h3>
+                    <p class="menu__item-desc">Premium fatty bluefin tuna belly, melt-in-your-mouth texture</p>
+                </div>
+            </article>
+            <article class="menu__item reveal-scale">
+                <div class="menu__item-image">
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/uni.jpeg" alt="Uni - Hokkaido sea urchin">
+                    <div class="menu__item-overlay"></div>
+                    <span class="menu__item-price">$36</span>
+                </div>
+                <div class="menu__item-content">
+                    <span class="menu__item-japanese">雲丹</span>
+                    <h3 class="menu__item-name">Uni</h3>
+                    <p class="menu__item-desc">Hokkaido sea urchin, briny sweetness with creamy finish</p>
+                </div>
+            </article>
+            <article class="menu__item reveal-scale">
+                <div class="menu__item-image">
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/wagyu.jpeg" alt="A5 Wagyu - Seared Miyazaki beef">
+                    <div class="menu__item-overlay"></div>
+                    <span class="menu__item-price">$32</span>
+                </div>
+                <div class="menu__item-content">
+                    <span class="menu__item-japanese">和牛</span>
+                    <h3 class="menu__item-name">A5 Wagyu</h3>
+                    <p class="menu__item-desc">Seared Miyazaki wagyu with truffle ponzu</p>
+                </div>
+            </article>
+            <article class="menu__item reveal-scale">
+                <div class="menu__item-image">
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/amaebi.jpeg" alt="Amaebi - Sweet shrimp">
+                    <div class="menu__item-overlay"></div>
+                    <span class="menu__item-price">$28</span>
+                </div>
+                <div class="menu__item-content">
+                    <span class="menu__item-japanese">甘海老</span>
+                    <h3 class="menu__item-name">Amaebi</h3>
+                    <p class="menu__item-desc">Sweet shrimp, delicate and pristine from Hokkaido waters</p>
+                </div>
+            </article>
+            <article class="menu__item reveal-scale">
+                <div class="menu__item-image">
+                    <img src="https://raw.githubusercontent.com/VanhDc/sushi-template/main/images/anago.jpeg" alt="Anago - Conger eel">
+                    <div class="menu__item-overlay"></div>
+                    <span class="menu__item-price">$24</span>
+                </div>
+                <div class="menu__item-content">
+                    <span class="menu__item-japanese">穴子</span>
+                    <h3 class="menu__item-name">Anago</h3>
+                    <p class="menu__item-desc">Conger eel with house-made sweet soy glaze</p>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Experience                                                   ║
+         ║                                                                        ║
+         ║  DESIGN: Three-column feature grid highlighting unique aspects.        ║
+         ║  Uses Japanese characters as icons for authentic feel.                 ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <section class="experience" id="experience">
+        <div class="experience__container">
+            <div class="experience__header">
+                <span class="experience__label reveal">The Kujira Way</span>
+                <h2 class="experience__title reveal">An Unforgettable Experience</h2>
+            </div>
+            <div class="experience__grid">
+                <div class="experience__item reveal">
+                    <span class="experience__icon">鮮</span>
+                    <h3 class="experience__item-title">Daily Fresh</h3>
+                    <p class="experience__item-text">Fish flown in daily from Tokyo's renowned Tsukiji Market, ensuring peak freshness and authentic flavors.</p>
+                </div>
+                <div class="experience__item reveal">
+                    <span class="experience__icon">匠</span>
+                    <h3 class="experience__item-title">Master Crafted</h3>
+                    <p class="experience__item-text">Our itamae trained for over 15 years in Tokyo, bringing time-honored techniques to every creation.</p>
+                </div>
+                <div class="experience__item reveal">
+                    <span class="experience__icon">心</span>
+                    <h3 class="experience__item-title">Heartfelt Service</h3>
+                    <p class="experience__item-text">Intimate 12-seat counter experience where hospitality meets artistry in perfect harmony.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Chef                                                         ║
+         ║                                                                        ║
+         ║  DESIGN: Full-width with floating quote card. Creates emotional        ║
+         ║  connection through the chef's personal philosophy.                    ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <section class="chef" id="chef">
+        <div class="chef__background"></div>
+        <div class="chef__overlay"></div>
+        <div class="chef__content">
+            <div class="chef__card reveal-right">
+                <span class="chef__label">Master Chef</span>
+                <blockquote class="chef__quote">
+                    Sushi is not about the fish. It's about the moment of harmony between nature, technique, and the guest's anticipation.
+                </blockquote>
+                <p class="chef__name">Kentaro Yamada</p>
+                <p class="chef__title">Head Itamae, 20 Years Experience</p>
+            </div>
+            <span class="chef__kanji">職</span>
+        </div>
+    </section>
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Reservation                                                  ║
+         ║                                                                        ║
+         ║  DESIGN: Clean form with gold accents. Strong call-to-action.          ║
+         ║  Form is styled but non-functional (for demonstration).                ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <section class="reservation" id="reservation">
+        <div class="reservation__container">
+            <div class="reservation__kanji reveal">予約</div>
+            <span class="reservation__label reveal">Reserve Your Seat</span>
+            <h2 class="reservation__title reveal">Begin Your Journey</h2>
+            <p class="reservation__subtitle reveal">
+                Our intimate 12-seat counter fills quickly. Reserve your omakase experience and discover why Kujira has been called "a transcendent journey through Japanese culinary art."
+            </p>
+            <form class="reservation__form reveal" onsubmit="return false;">
+                <div class="reservation__row">
+                    <input type="text" class="reservation__input" placeholder="Your Name" required="">
+                    <input type="email" class="reservation__input" placeholder="Email Address" required="">
+                </div>
+                <div class="reservation__row">
+                    <input type="date" class="reservation__input" required="">
+                    <select class="reservation__input" required="">
+                        <option value="" disabled="" selected="">Party Size</option>
+                        <option value="1">1 Guest</option>
+                        <option value="2">2 Guests</option>
+                        <option value="3">3 Guests</option>
+                        <option value="4">4 Guests</option>
+                    </select>
+                </div>
+                <input type="tel" class="reservation__input" placeholder="Phone Number">
+                <button type="submit" class="reservation__button">Request Reservation</button>
+            </form>
+        </div>
+    </section>
+
+    </div><!-- /.main-content -->
+
+    <!-- ╔════════════════════════════════════════════════════════════════════════╗
+         ║  SECTION: Footer                                                       ║
+         ║                                                                        ║
+         ║  DESIGN: Multi-column layout with contact info and links.              ║
+         ║  Large decorative kanji in background adds visual interest.            ║
+         ╚════════════════════════════════════════════════════════════════════════╝ -->
+    <footer class="footer">
+        <span class="footer__kanji">鯨</span>
+        <div class="footer__container">
+            <div class="footer__brand">
+                <div class="footer__logo">鯨</div>
+                <div class="footer__logo-en">Kujira</div>
+                <p class="footer__tagline">Where tradition meets mastery. An intimate omakase experience in the heart of the city.</p>
+            </div>
+            <div class="footer__col">
+                <h4 class="footer__col-title">Navigate</h4>
+                <ul class="footer__links">
+                    <li><a href="#philosophy" class="footer__link">Philosophy</a></li>
+                    <li><a href="#menu" class="footer__link">Menu</a></li>
+                    <li><a href="#experience" class="footer__link">Experience</a></li>
+                    <li><a href="#chef" class="footer__link">Our Chef</a></li>
+                </ul>
+            </div>
+            <div class="footer__col">
+                <h4 class="footer__col-title">Contact</h4>
+                <p class="footer__contact-item">123 Sakura Lane<br>Downtown, NY 10001</p>
+                <p class="footer__contact-item">+1 (212) 555-0123</p>
+                <p class="footer__contact-item">hello@kujira.com</p>
+            </div>
+            <div class="footer__col">
+                <h4 class="footer__col-title">Hours</h4>
+                <p class="footer__contact-item">Tuesday — Saturday<br>6:00 PM — 10:00 PM</p>
+                <p class="footer__contact-item">Closed Sunday &amp; Monday</p>
+                <div class="footer__social">
+                    <a href="#" class="footer__social-link" aria-label="Instagram">IG</a>
+                    <a href="#" class="footer__social-link" aria-label="Facebook">FB</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer__bottom">
+            <p class="footer__copyright">© 2025 Kujira. All rights reserved.</p>
+            <div class="footer__legal">
+                <a href="#" class="footer__legal-link">Privacy Policy</a>
+                <a href="#" class="footer__legal-link">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════
+         SCRIPTS: GSAP & Custom JavaScript
+
+         We load GSAP from CDN for:
+         - ScrollTrigger: Handles scroll-based animations
+         - Core GSAP: Smooth, performant animations
+    ═══════════════════════════════════════════════════════════════════════════════ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <script>
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  CONFIGURATION                                                         ║
+           ║                                                                        ║
+           ║  Change BASE_URL when hosting images externally.                       ║
+           ║                                                                        ║
+           ║  LOCAL TESTING:                                                        ║
+           ║  BASE_URL = './sushiAnimation'                                         ║
+           ║                                                                        ║
+           ║  GITHUB HOSTED:                                                        ║
+           ║  BASE_URL = 'https://raw.githubusercontent.com/USER/REPO/main/sushiAnimation' ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        const CONFIG = {
+            // ═══════════════════════════════════════════════════════════════════
+            // IMAGE SOURCE - Change this URL for different hosting
+            //
+            // LOCAL TESTING:
+            //   BASE_URL: './sushiAnimation'
+            //
+            // GITHUB HOSTED (current - for aura.build):
+            // ═══════════════════════════════════════════════════════════════════
+            BASE_URL: 'https://raw.githubusercontent.com/VanhDc/sushi-template/main/sushiAnimation',
+
+            // Number of frames in the animation sequence
+            FRAME_COUNT: 192,
+
+            // Frame filename pattern
+            // Files are named: frame_000.jpg, frame_001.jpg, ... frame_191.jpg
+            getFramePath: function(index) {
+                const frameNum = String(index).padStart(3, '0');
+                return `${this.BASE_URL}/frame_${frameNum}.jpg`;
+            }
+        };
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  IMAGE PRELOADER                                                       ║
+           ║                                                                        ║
+           ║  WHY PRELOAD?                                                          ║
+           ║  The scroll animation needs instant access to all 192 frames.          ║
+           ║  If we loaded them on-demand, there would be visible loading delays    ║
+           ║  as the user scrolls.                                                  ║
+           ║                                                                        ║
+           ║  HOW IT WORKS:                                                         ║
+           ║  1. Create an Image object for each frame                              ║
+           ║  2. Set the src to trigger loading                                     ║
+           ║  3. Track load progress with a counter                                 ║
+           ║  4. Store loaded images in an array for quick access                   ║
+           ║  5. Resolve the promise when all images are loaded                     ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        const images = [];  // Array to store all loaded Image objects
+        let imagesLoaded = 0;
+
+        function preloadImages() {
+            return new Promise((resolve) => {
+                const loader = document.getElementById('loader');
+                const progressBar = document.getElementById('loaderProgress');
+                const countText = document.getElementById('loaderCount');
+
+                for (let i = 0; i < CONFIG.FRAME_COUNT; i++) {
+                    const img = new Image();
+
+                    // ═══════════════════════════════════════════════════════════
+                    // IMAGE LOAD EVENT
+                    // Fires when a single image finishes loading
+                    // ═══════════════════════════════════════════════════════════
+                    img.onload = () => {
+                        imagesLoaded++;
+                        const progress = (imagesLoaded / CONFIG.FRAME_COUNT) * 100;
+
+                        // Update loading UI
+                        progressBar.style.width = `${progress}%`;
+                        countText.textContent = `${Math.round(progress)}%`;
+
+                        // All images loaded - hide loader and start experience
+                        if (imagesLoaded === CONFIG.FRAME_COUNT) {
+                            setTimeout(() => {
+                                loader.classList.add('hidden');
+                                initAnimations();
+                                resolve();
+                            }, 500); // Small delay for smooth transition
+                        }
+                    };
+
+                    // ═══════════════════════════════════════════════════════════
+                    // IMAGE ERROR HANDLING
+                    // If an image fails to load, we still count it to prevent
+                    // the loader from hanging indefinitely
+                    // ═══════════════════════════════════════════════════════════
+                    img.onerror = () => {
+                        console.warn(`Failed to load frame ${i}`);
+                        imagesLoaded++;
+                        const progress = (imagesLoaded / CONFIG.FRAME_COUNT) * 100;
+                        progressBar.style.width = `${progress}%`;
+                        countText.textContent = `${Math.round(progress)}%`;
+
+                        if (imagesLoaded === CONFIG.FRAME_COUNT) {
+                            setTimeout(() => {
+                                loader.classList.add('hidden');
+                                initAnimations();
+                                resolve();
+                            }, 500);
+                        }
+                    };
+
+                    // Start loading the image
+                    img.src = CONFIG.getFramePath(i);
+                    images.push(img);
+                }
+            });
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  CANVAS SETUP & SCROLL ANIMATION                                       ║
+           ║                                                                        ║
+           ║  THE CORE TECHNIQUE:                                                   ║
+           ║  This is where the scroll-driven animation magic happens.              ║
+           ║                                                                        ║
+           ║  CANVAS BASICS:                                                        ║
+           ║  - Canvas is an HTML element for drawing graphics                      ║
+           ║  - getContext('2d') gives us a 2D rendering context                    ║
+           ║  - drawImage() renders an image to the canvas                          ║
+           ║                                                                        ║
+           ║  WHY CANVAS OVER IMG?                                                  ║
+           ║  - Canvas drawing is GPU-accelerated                                   ║
+           ║  - No DOM manipulation overhead                                        ║
+           ║  - Smoother performance at high frame rates                            ║
+           ║                                                                        ║
+           ║  SCROLL-TO-FRAME MAPPING:                                              ║
+           ║  scroll progress (0 to 1) → frame index (0 to 191)                     ║
+           ║  Example: 50% scroll = frame 95                                        ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initCanvas() {
+            const canvas = document.getElementById('heroCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // ═══════════════════════════════════════════════════════════════════
+            // CANVAS SIZING
+            // We set the canvas size to match the viewport while maintaining
+            // the aspect ratio of our source images (800x450)
+            // ═══════════════════════════════════════════════════════════════════
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                const containerWidth = container.offsetWidth;
+                const containerHeight = container.offsetHeight;
+
+                // Source image dimensions
+                const imgWidth = 800;
+                const imgHeight = 450;
+                const imgAspect = imgWidth / imgHeight;
+
+                // Calculate size to cover container (like background-size: cover)
+                let drawWidth, drawHeight;
+                const containerAspect = containerWidth / containerHeight;
+
+                if (containerAspect > imgAspect) {
+                    // Container is wider than image aspect
+                    drawWidth = containerWidth;
+                    drawHeight = containerWidth / imgAspect;
+                } else {
+                    // Container is taller than image aspect
+                    drawHeight = containerHeight;
+                    drawWidth = containerHeight * imgAspect;
+                }
+
+                canvas.width = drawWidth;
+                canvas.height = drawHeight;
+
+                // Center the canvas
+                canvas.style.width = `${drawWidth}px`;
+                canvas.style.height = `${drawHeight}px`;
+
+                // Redraw current frame after resize
+                if (images[0] && images[0].complete) {
+                    renderFrame(0);
+                }
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // RENDER FRAME
+            // Draws a specific frame to the canvas
+            // ═══════════════════════════════════════════════════════════════════
+            function renderFrame(frameIndex) {
+                // Clamp frame index to valid range
+                const index = Math.min(Math.max(frameIndex, 0), CONFIG.FRAME_COUNT - 1);
+                const img = images[index];
+
+                if (img && img.complete && img.naturalWidth > 0) {
+                    // Clear canvas and draw new frame
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+            }
+
+            // Initial setup
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Render first frame immediately
+            renderFrame(0);
+
+            // ═══════════════════════════════════════════════════════════════════
+            // GSAP SCROLLTRIGGER SETUP
+            // This is where we connect scroll position to frame rendering
+            //
+            // KEY PROPERTIES:
+            // - trigger: The element that triggers the animation
+            // - start: When the animation starts ("top top" = when top of trigger hits top of viewport)
+            // - end: When the animation ends ("+=300%" = after scrolling 3x viewport height)
+            // - pin: Keeps the element fixed during the animation
+            // - scrub: Smoothly links animation to scroll position (0.5 = slight smoothing)
+            // - onUpdate: Called on every scroll update with progress value
+            // ═══════════════════════════════════════════════════════════════════
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            // ═══════════════════════════════════════════════════════════════════
+            // SCROLLTRIGGER DEFAULTS
+            // anticipatePin prevents the "stuck" feeling when scrolling starts
+            // by adjusting pinned element positioning ahead of time
+            // ═══════════════════════════════════════════════════════════════════
+            ScrollTrigger.defaults({
+                anticipatePin: 1
+            });
+
+            // Create the scroll-driven animation
+            ScrollTrigger.create({
+                trigger: '#hero',
+                start: 'top top',
+                end: '+=300%',  // 3 viewport heights of scrolling
+                pin: true,      // Pin the hero section during animation
+                pinSpacing: true, // Add spacing below for smooth scroll
+                scrub: 0.3,     // Faster scrubbing for more responsive feel
+                anticipatePin: 1, // Prevent initial scroll jump
+                invalidateOnRefresh: true, // Recalculate on resize
+                onUpdate: (self) => {
+                    // ═══════════════════════════════════════════════════════════
+                    // THE MAGIC LINE
+                    // self.progress is a value from 0 to 1
+                    // We multiply by (FRAME_COUNT - 1) to get frame index 0-191
+                    // Math.floor ensures we get whole numbers
+                    // ═══════════════════════════════════════════════════════════
+                    const frameIndex = Math.floor(self.progress * (CONFIG.FRAME_COUNT - 1));
+                    renderFrame(frameIndex);
+                }
+            });
+
+            return { renderFrame, resizeCanvas };
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  NAVIGATION HIDE/SHOW ON SCROLL                                        ║
+           ║                                                                        ║
+           ║  TECHNIQUE:                                                            ║
+           ║  Track scroll direction by comparing current vs previous scroll        ║
+           ║  position. Hide nav on scroll down, show on scroll up.                 ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initNavigation() {
+            const nav = document.getElementById('nav');
+            let lastScroll = 0;
+
+            window.addEventListener('scroll', () => {
+                const currentScroll = window.pageYOffset;
+
+                // Only hide/show after scrolling past the hero
+                if (currentScroll > window.innerHeight) {
+                    if (currentScroll > lastScroll) {
+                        // Scrolling down - hide nav
+                        nav.classList.add('hidden');
+                    } else {
+                        // Scrolling up - show nav
+                        nav.classList.remove('hidden');
+                    }
+                } else {
+                    nav.classList.remove('hidden');
+                }
+
+                lastScroll = currentScroll;
+            });
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  BACKGROUND KANJI SCROLL REVEAL                                        ║
+           ║                                                                        ║
+           ║  TECHNIQUE:                                                            ║
+           ║  Uses clip-path animation to reveal the vertical kanji text as         ║
+           ║  the user scrolls. The text reveals from top to bottom, creating       ║
+           ║  an elegant "unrolling scroll" effect.                                 ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initBackgroundKanjiAnimation() {
+            const kanjiElement = document.querySelector('.background-kanji');
+            const kanjiText = document.querySelector('.background-kanji__text');
+            const mainContent = document.querySelector('.main-content');
+            if (!kanjiElement || !kanjiText || !mainContent) return;
+
+            // Measure text height
+            kanjiElement.style.height = 'auto';
+            const textHeight = kanjiText.offsetHeight;
+            kanjiElement.style.height = '0px';
+
+            // Direct scroll event for true 1:1 mapping
+            const updateHeight = () => {
+                const rect = mainContent.getBoundingClientRect();
+                const vh = window.innerHeight;
+
+                // Progress: 0 at start, 1 at end of main-content scroll
+                const start = rect.top - vh;
+                const end = rect.bottom;
+                const progress = Math.min(Math.max(-start / (end - start), 0), 1);
+
+                kanjiElement.style.height = (progress * textHeight) + 'px';
+            };
+
+            window.addEventListener('scroll', updateHeight, { passive: true });
+            window.addEventListener('resize', updateHeight);
+            updateHeight();
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  SCROLL REVEAL ANIMATIONS                                              ║
+           ║                                                                        ║
+           ║  TECHNIQUE:                                                            ║
+           ║  Elements with .reveal classes start invisible/offset.                 ║
+           ║  ScrollTrigger animates them to their final state when they            ║
+           ║  enter the viewport.                                                   ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initRevealAnimations() {
+            // ═══════════════════════════════════════════════════════════════════
+            // Refresh ScrollTrigger to recalculate positions after hero pin
+            // ═══════════════════════════════════════════════════════════════════
+            ScrollTrigger.refresh();
+
+            // Reveal from bottom
+            gsap.utils.toArray('.reveal').forEach(elem => {
+                gsap.fromTo(elem,
+                    { opacity: 0, y: 40 },
+                    {
+                        opacity: 1,
+                        y: 0,
+                        duration: 1,
+                        ease: 'power3.out',
+                        scrollTrigger: {
+                            trigger: elem,
+                            start: 'top 90%',
+                            toggleActions: 'play none none none'
+                        }
+                    }
+                );
+            });
+
+            // Reveal from left
+            gsap.utils.toArray('.reveal-left').forEach(elem => {
+                gsap.fromTo(elem,
+                    { opacity: 0, x: -40 },
+                    {
+                        opacity: 1,
+                        x: 0,
+                        duration: 1,
+                        ease: 'power3.out',
+                        scrollTrigger: {
+                            trigger: elem,
+                            start: 'top 90%',
+                            toggleActions: 'play none none none'
+                        }
+                    }
+                );
+            });
+
+            // Reveal from right
+            gsap.utils.toArray('.reveal-right').forEach(elem => {
+                gsap.fromTo(elem,
+                    { opacity: 0, x: 40 },
+                    {
+                        opacity: 1,
+                        x: 0,
+                        duration: 1,
+                        ease: 'power3.out',
+                        scrollTrigger: {
+                            trigger: elem,
+                            start: 'top 90%',
+                            toggleActions: 'play none none none'
+                        }
+                    }
+                );
+            });
+
+            // Reveal with scale (menu items)
+            gsap.utils.toArray('.reveal-scale').forEach((elem, i) => {
+                gsap.fromTo(elem,
+                    { opacity: 0, scale: 0.95 },
+                    {
+                        opacity: 1,
+                        scale: 1,
+                        duration: 0.8,
+                        delay: i * 0.1,
+                        ease: 'power3.out',
+                        scrollTrigger: {
+                            trigger: elem,
+                            start: 'top 95%',
+                            toggleActions: 'play none none none'
+                        }
+                    }
+                );
+            });
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  PINNED HORIZONTAL SCROLL FOR MENU                                     ║
+           ║                                                                        ║
+           ║  TECHNIQUE: Convert vertical scroll to horizontal movement             ║
+           ║                                                                        ║
+           ║  This creates an Apple-style horizontal gallery where:                 ║
+           ║  1. The section pins when it enters the viewport                       ║
+           ║  2. Scrolling down moves menu items from right to left                 ║
+           ║  3. The section unpins after all items have scrolled through           ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initMenuHorizontalScroll() {
+            const menuSection = document.querySelector('.menu');
+            const menuScroll = document.querySelector('.menu__scroll');
+            const menuItems = document.querySelectorAll('.menu__item');
+
+            if (!menuSection || !menuScroll || menuItems.length === 0) return;
+
+            // Skip pinned scroll on mobile - use native horizontal scroll instead
+            if (window.innerWidth <= 768) return;
+
+            // Calculate total scroll distance needed
+            const itemWidth = menuItems[0].offsetWidth;
+            const gap = parseFloat(getComputedStyle(menuScroll).gap) || 32;
+            const totalWidth = (itemWidth * menuItems.length) + (gap * (menuItems.length - 1));
+            const viewportWidth = window.innerWidth;
+            const paddingLeft = parseFloat(getComputedStyle(menuScroll).paddingLeft) || 32;
+
+            // How far we need to scroll horizontally
+            const scrollDistance = totalWidth - viewportWidth + paddingLeft + gap;
+
+            // Create the pinned horizontal scroll
+            gsap.to(menuScroll, {
+                x: -scrollDistance,
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: menuSection,
+                    start: 'top top',
+                    end: () => `+=${scrollDistance}`,
+                    pin: true,
+                    scrub: 0.5,
+                    anticipatePin: 1,
+                    invalidateOnRefresh: true
+                }
+            });
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  HERO CONTENT ANIMATION                                                ║
+           ║                                                                        ║
+           ║  Animates the hero text and scroll indicator after loading.            ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initHeroAnimation() {
+            const tl = gsap.timeline({ delay: 0.5 });
+
+            tl.to('#heroJapanese', {
+                opacity: 1,
+                y: 0,
+                duration: 1.2,
+                ease: 'power3.out'
+            })
+            .to('#heroTitle', {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: 'power3.out'
+            }, '-=0.8')
+            .to('#heroTagline', {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: 'power3.out'
+            }, '-=0.6')
+            .to('#heroScroll', {
+                opacity: 1,
+                duration: 1,
+                ease: 'power3.out'
+            }, '-=0.4');
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  EXPERIENCE CARDS HOVER EFFECT                                         ║
+           ║                                                                        ║
+           ║  TECHNIQUE: Track mouse position and update CSS custom properties      ║
+           ║  to create a spotlight effect that follows the cursor.                 ║
+           ║                                                                        ║
+           ║  The ::after pseudo-element uses these variables to position its       ║
+           ║  radial gradient, creating the "reveal" effect on the pattern.         ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initExperienceHover() {
+            const items = document.querySelectorAll('.experience__item');
+
+            items.forEach(item => {
+                // Track mouse position within each card
+                item.addEventListener('mousemove', (e) => {
+                    const rect = item.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
+                    item.style.setProperty('--mouse-x', `${x}%`);
+                    item.style.setProperty('--mouse-y', `${y}%`);
+                });
+
+                // Don't reset position on leave - spotlight stays at last cursor position
+                // This prevents the "center flash" during fade-out
+            });
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  MAIN INITIALIZATION                                                   ║
+           ║                                                                        ║
+           ║  Called after all images are loaded. Sets up all interactions.         ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        function initAnimations() {
+            initCanvas();
+            initNavigation();
+            initHeroAnimation();
+            initExperienceHover();  // Experience cards spotlight effect
+
+            // Initialize reveal animations after a short delay
+            // This ensures the hero pin is set up first
+            setTimeout(() => {
+                initRevealAnimations();
+                initBackgroundKanjiAnimation();
+                initMenuHorizontalScroll();
+                // Final refresh after all animations are set up
+                setTimeout(() => ScrollTrigger.refresh(), 200);
+            }, 100);
+        }
+
+        /* ╔════════════════════════════════════════════════════════════════════════╗
+           ║  START THE EXPERIENCE                                                  ║
+           ║                                                                        ║
+           ║  Wait for DOM to be ready, then preload images.                        ║
+           ╚════════════════════════════════════════════════════════════════════════╝ */
+
+        document.addEventListener('DOMContentLoaded', () => {
+            preloadImages();
+        });
+    </script>
+
+
+</body></html>
