@@ -83,6 +83,10 @@ Entries are grouped by category, ordered roughly chronologically within each gro
 | 37 | — | **Content cadence committed: 3–4 pieces per week.** | Build visibility and early brand recognition before launch. |
 | 38 | — | **Go-to-market strategy anchored on curiosity:** When someone sees the Threshold Jacket, the goal is *"I've never seen that before. Where is it from?"* | Organic curiosity replaces paid acquisition at the early stage. |
 | 39 | Jan 2026 | **Social presence launched.** | Begin building audience ahead of product availability. |
+| 40 | Feb 2026 | **Two-account content strategy formalised:** Personal Instagram (The Build + The Eye) and @SylvanHillsofficial (The World). Three distinct series with clear mandates. | Separates founder voice from brand voice. Lets the brand account be pure aesthetic while the personal account carries the humanity and process. |
+| 41 | Feb 2026 | **30-day content calendar built for March 2026.** Four-phase arc: Signal → Deepen → Name → Close. Batch cadence of one 2.5-hour Sunday session per week. ~7–9 posts per week. | Structured approach prevents reactive posting. Batching preserves creative focus. Four phases create narrative momentum even before product exists. |
+| 42 | Feb 2026 | **Week 3 (Mar 17) designated as the public naming moment for Sylvan Hills.** Personal account names the brand for the first time; official account mirrors with 'This is Sylvan Hills.' Bio updated same day. | Creates a singular, intentional reveal rather than an accidental reveal. Gives the announcement weight. |
+| 43 | Feb 2026 | **Content calendar saved to content/ folder** as both .xlsx (4-sheet working document) and .docx (printable/shareable companion). | Keeps both an operational tool and a clean reference document in the repo. |
 
 ---
 
